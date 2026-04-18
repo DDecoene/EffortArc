@@ -1,0 +1,16 @@
+{
+  "name": "HikeTracker",
+  "short_name": "HikeTracker",
+  "description": "Hiking analytics and training readiness",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "/hike-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
