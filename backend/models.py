@@ -20,6 +20,7 @@ class Activity(Base):
     elevation_gain_m = Column(Float)
     avg_moving_pace = Column(Float)
     processed_at = Column(DateTime)
+    commute = Column(Boolean, nullable=False, default=False)
     segments = relationship("ActivitySegment", back_populates="activity", cascade="all, delete-orphan")
 
 class ActivitySegment(Base):
