@@ -75,14 +75,18 @@ def smooth_elevation(elevations: List[float], window: int = 5) -> List[float]:
     return smoothed.tolist()
 
 
-def calculate_grade_adjusted_pace(pace_min_per_km: float, grade_percent: float) -> float:
+def calculate_grade_adjusted_pace(pace_min_per_km: float, grade_percent: float, sport: str = "hiking") -> float:
     g = grade_percent / 100.0
-    cost_factor = 1 + 4.0 * g + 5.0 * g * abs(g)
+    if sport == "cycling":
+        # Cycling is less affected by grade than hiking
+        cost_factor = 1 + 2.0 * g + 3.0 * g * abs(g)
+    else:
+        cost_factor = 1 + 4.0 * g + 5.0 * g * abs(g)
     cost_factor = max(cost_factor, 0.1)
     return pace_min_per_km / cost_factor
 
 
-def build_segments(points: List[Dict]) -> List[Dict]:
+def build_segments(points: List[Dict], sport: str = "hiking") -> List[Dict]:
     segments = []
     km_index = 1
     segment_points = []
@@ -101,7 +105,7 @@ def build_segments(points: List[Dict]) -> List[Dict]:
             pace = (dt_s / 60.0) if dt_s > 0 else 0.0
             ele_change = seg_end.get("ele", 0) - seg_start.get("ele", 0)
             grade_pct = (ele_change / 1000.0) * 100.0
-            gap = calculate_grade_adjusted_pace(pace, grade_pct)
+            gap = calculate_grade_adjusted_pace(pace, grade_pct, sport=sport)
             is_stop = all(p.get("is_stop", False) for p in segment_points)
 
             segments.append({
@@ -144,15 +148,19 @@ def calculate_fatigue_score(segments: List[Dict]) -> Dict:
     return {"label": label, "first_pace": first_avg, "last_pace": last_avg, "drop_pct": drop_pct}
 
 
-def clean_activity(raw_points: List[Dict]) -> Dict:
-    points = remove_outliers(raw_points, max_speed_kmh=15.0)
-    points = detect_stops(points, min_stop_duration_s=60, max_stop_speed_kmh=0.5)
+def clean_activity(raw_points: List[Dict], sport: str = "hiking") -> Dict:
+    if sport == "cycling":
+        points = remove_outliers(raw_points, max_speed_kmh=80.0)
+        points = detect_stops(points, min_stop_duration_s=60, max_stop_speed_kmh=3.0)
+    else:
+        points = remove_outliers(raw_points, max_speed_kmh=15.0)
+        points = detect_stops(points, min_stop_duration_s=60, max_stop_speed_kmh=0.5)
     elevations = [p.get("ele", 0.0) for p in points]
     smoothed_eles = smooth_elevation(elevations)
     for i, p in enumerate(points):
         p["ele"] = smoothed_eles[i]
 
-    segments = build_segments(points)
+    segments = build_segments(points, sport=sport)
     fatigue = calculate_fatigue_score(segments)
 
     moving_points = [p for p in points if not p.get("is_stop", False)]

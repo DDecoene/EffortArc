@@ -1,4 +1,4 @@
-import type { Activity, ActivitySummary, Goal, Insights, SyncStatus } from '../types'
+import type { Activity, ActivitySummary, Goal, Insights, SyncStatus, SportType } from '../types'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -12,11 +12,32 @@ export const api = {
   getAuthUrl: () => request<{ url: string }>('/auth/strava'),
   getAuthStatus: () => request<SyncStatus>('/auth/status'),
   sync: () => request<{ synced: number; total_new: number }>('/sync', { method: 'POST' }),
-  getActivities: () => request<ActivitySummary[]>('/activities'),
+
+  getActivities: (sportType?: SportType) => {
+    const qs = sportType ? `?sport_type=${sportType}` : ''
+    return request<ActivitySummary[]>(`/activities${qs}`)
+  },
+
   getActivity: (id: number) => request<Activity>(`/activities/${id}`),
-  getInsights: () => request<Insights>('/insights'),
-  getGoals: () => request<Goal[]>('/goals'),
-  createGoal: (data: { name: string; date: string; distance_km: number; elevation_gain_m?: number; notes?: string }) =>
+
+  getInsights: (sportType?: SportType) => {
+    const qs = sportType ? `?sport_type=${sportType}` : ''
+    return request<Insights>(`/insights${qs}`)
+  },
+
+  getGoals: (sportType?: SportType) => {
+    const qs = sportType ? `?sport_type=${sportType}` : ''
+    return request<Goal[]>(`/goals${qs}`)
+  },
+
+  createGoal: (data: {
+    name: string
+    sport_type: SportType
+    date: string
+    distance_km: number
+    elevation_gain_m?: number
+    notes?: string
+  }) =>
     request<Goal>('/goals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

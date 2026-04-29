@@ -1,11 +1,12 @@
 import json
 import os
 from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from typing import Optional
 
-from database import get_db, init_db
+from database import get_db
 from models import Activity, ActivitySegment, Goal, SyncState
 from schemas import ActivityOut, ActivitySummary, GoalIn, GoalOut, SyncStatus
 from strava import (
@@ -14,6 +15,9 @@ from strava import (
     fetch_new_activities,
     fetch_activity_streams,
     get_or_create_sync_state,
+    sport_category,
+    HIKING_TYPES,
+    CYCLING_TYPES,
 )
 from cleaner import clean_activity
 from metrics import build_insights, calculate_goal_readiness
@@ -28,10 +32,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-def startup():
-    init_db()
 
 
 @app.get("/auth/strava")
@@ -72,7 +72,8 @@ async def sync_activities(db: Session = Depends(get_db)):
             continue
 
         raw_points = await fetch_activity_streams(act_data["id"], state.strava_access_token)
-        cleaned = clean_activity(raw_points)
+        sport = sport_category(act_data["type"])
+        cleaned = clean_activity(raw_points, sport=sport)
 
         activity = Activity(
             strava_id=str(act_data["id"]),
@@ -108,9 +109,21 @@ async def sync_activities(db: Session = Depends(get_db)):
     return {"synced": synced, "total_new": len(new_activities)}
 
 
+def _sport_type_filter(query, sport_type: Optional[str]):
+    if sport_type == "hiking":
+        return query.filter(Activity.type.in_(list(HIKING_TYPES)))
+    if sport_type == "cycling":
+        return query.filter(Activity.type.in_(list(CYCLING_TYPES)))
+    return query
+
+
 @app.get("/activities", response_model=list[ActivitySummary])
-def list_activities(db: Session = Depends(get_db)):
-    return db.query(Activity).order_by(Activity.date.desc()).all()
+def list_activities(
+    sport_type: Optional[str] = Query(None, pattern="^(hiking|cycling)$"),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Activity).order_by(Activity.date.desc())
+    return _sport_type_filter(q, sport_type).all()
 
 
 @app.get("/activities/{activity_id}", response_model=ActivityOut)
@@ -122,8 +135,12 @@ def get_activity(activity_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/insights")
-def get_insights(db: Session = Depends(get_db)):
-    activities = db.query(Activity).order_by(Activity.date.asc()).all()
+def get_insights(
+    sport_type: Optional[str] = Query(None, pattern="^(hiking|cycling)$"),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Activity).order_by(Activity.date.asc())
+    activities = _sport_type_filter(q, sport_type).all()
     data = [
         {
             "date": a.date,
@@ -136,18 +153,26 @@ def get_insights(db: Session = Depends(get_db)):
 
 
 @app.get("/goals", response_model=list[GoalOut])
-def list_goals(db: Session = Depends(get_db)):
-    goals = db.query(Goal).order_by(Goal.date.asc()).all()
-    activities = db.query(Activity).order_by(Activity.date.asc()).all()
-    act_data = [
-        {"date": a.date, "cleaned_distance_m": a.cleaned_distance_m or 0, "avg_moving_pace": a.avg_moving_pace or 0}
-        for a in activities
-    ]
+def list_goals(
+    sport_type: Optional[str] = Query(None, pattern="^(hiking|cycling)$"),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Goal).order_by(Goal.date.asc())
+    if sport_type:
+        q = q.filter(Goal.sport_type == sport_type)
+    goals = q.all()
+
     result = []
     for goal in goals:
+        act_q = db.query(Activity).order_by(Activity.date.asc())
+        activities = _sport_type_filter(act_q, goal.sport_type).all()
+        act_data = [
+            {"date": a.date, "cleaned_distance_m": a.cleaned_distance_m or 0, "avg_moving_pace": a.avg_moving_pace or 0}
+            for a in activities
+        ]
         readiness = calculate_goal_readiness(act_data, goal.distance_km, goal.date)
         out = GoalOut(
-            id=goal.id, name=goal.name, date=goal.date,
+            id=goal.id, name=goal.name, sport_type=goal.sport_type, date=goal.date,
             distance_km=goal.distance_km, elevation_gain_m=goal.elevation_gain_m,
             notes=goal.notes, created_at=goal.created_at, readiness=readiness,
         )

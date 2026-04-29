@@ -1,3 +1,5 @@
+export type SportType = 'hiking' | 'cycling'
+
 export interface Segment {
   km_index: number
   pace: number | null
@@ -35,6 +37,7 @@ export interface ActivitySummary {
 export interface Goal {
   id: number
   name: string
+  sport_type: SportType
   date: string
   distance_km: number
   elevation_gain_m: number | null
@@ -68,4 +71,41 @@ export interface Insights {
 export interface SyncStatus {
   last_synced_at: string | null
   is_connected: boolean
+}
+
+export function isCyclingType(activityType: string): boolean {
+  return ['Ride', 'VirtualRide', 'EBikeRide'].includes(activityType)
+}
+
+export function isHikingType(activityType: string): boolean {
+  return ['Hike', 'Walk'].includes(activityType)
+}
+
+export function sportCategoryFromType(activityType: string): SportType {
+  return isCyclingType(activityType) ? 'cycling' : 'hiking'
+}
+
+/** Convert min/km pace to km/h speed */
+export function paceToSpeed(minPerKm: number): number {
+  return 60 / minPerKm
+}
+
+export function formatSpeed(minPerKm: number | null): string {
+  if (!minPerKm) return '—'
+  return `${paceToSpeed(minPerKm).toFixed(1)} km/h`
+}
+
+export function formatPace(minPerKm: number | null): string {
+  if (!minPerKm) return '—'
+  const m = Math.floor(minPerKm)
+  const s = Math.round((minPerKm - m) * 60)
+  return `${m}:${s.toString().padStart(2, '0')} /km`
+}
+
+export function formatMovingMetric(minPerKm: number | null, _activityType: string): string {
+  return formatSpeed(minPerKm)
+}
+
+export function movingMetricLabel(_activityType: string): string {
+  return 'Avg Speed'
 }
