@@ -200,17 +200,24 @@ def get_insights(
     sport_type: Optional[str] = Query(None, pattern="^(hiking|cycling)$"),
     db: Session = Depends(get_db),
 ):
-    q = db.query(Activity).order_by(Activity.date.asc())
-    activities = _sport_type_filter(q, sport_type).all()
+    activities = db.query(Activity).order_by(Activity.date.asc()).all()
+    goals = db.query(Goal).filter(Goal.date > datetime.utcnow()).all()
+
     data = [
         {
             "date": a.date,
             "cleaned_distance_m": a.cleaned_distance_m or 0,
             "avg_moving_pace": a.avg_moving_pace or 0,
+            "type": a.type,
+            "commute": a.commute,
         }
         for a in activities
     ]
-    return build_insights(data)
+    goal_data = [
+        {"name": g.name, "sport_type": g.sport_type, "distance_km": g.distance_km, "date": g.date}
+        for g in goals
+    ]
+    return build_insights(data, goal_data)
 
 
 @app.get("/goals", response_model=list[GoalOut])

@@ -1,49 +1,43 @@
-from metrics import (
-    calculate_fitness_status,
-    calculate_endurance_ceiling,
-    calculate_goal_readiness,
-)
 from datetime import datetime, timedelta
+from metrics import build_insights, _classify_activities, _unified_recommendation
 
+def _make_hike(date, km, pace=8.0):
+    return {"date": date, "cleaned_distance_m": km * 1000, "avg_moving_pace": pace,
+            "type": "Hike", "commute": False}
 
-def make_activity(date, distance_km, avg_pace, segments=None):
-    return {
-        "date": date,
-        "cleaned_distance_m": distance_km * 1000,
-        "avg_moving_pace": avg_pace,
-        "segments": segments or [],
-    }
+def _make_ride(date, km, commute=False):
+    return {"date": date, "cleaned_distance_m": km * 1000, "avg_moving_pace": None,
+            "type": "Ride", "commute": commute}
 
+NOW = datetime.utcnow()
 
-def test_fitness_status_building():
-    now = datetime.utcnow()
-    activities = [
-        make_activity(now - timedelta(weeks=i), 20.0 - i, 12.0)
-        for i in range(8)
+def test_classify_separates_commute_from_training():
+    acts = [
+        _make_ride(NOW, 15, commute=True),
+        _make_ride(NOW - timedelta(days=1), 40, commute=False),
+        _make_hike(NOW - timedelta(days=2), 20),
     ]
-    status = calculate_fitness_status(activities)
-    assert status["label"] == "building"
+    classified = _classify_activities(acts)
+    assert len(classified["hiking"]) == 1
+    assert len(classified["cycling_training"]) == 1
+    assert len(classified["cycling_commute"]) == 1
 
+def test_build_insights_returns_per_sport_keys():
+    acts = [_make_hike(NOW - timedelta(days=i*7), 15 + i) for i in range(8)]
+    result = build_insights(acts)
+    assert "hiking" in result
+    assert "cycling" in result
+    assert "recommendation" in result
 
-def test_fitness_status_declining():
-    now = datetime.utcnow()
-    activities = [
-        make_activity(now - timedelta(weeks=i), 5.0 + i, 14.0)
-        for i in range(8)
-    ]
-    status = calculate_fitness_status(activities)
-    assert status["label"] == "declining"
+def test_recommendation_mentions_nearest_goal():
+    acts = [_make_hike(NOW - timedelta(days=i*7), 10 + i) for i in range(8)]
+    goals = [{"name": "Test Hike", "sport_type": "hiking",
+               "distance_km": 42, "date": NOW + timedelta(days=30)}]
+    rec = _unified_recommendation(acts, goals)
+    assert "Test Hike" in rec or "42" in rec
 
-
-def test_endurance_ceiling_with_pace_decay():
-    segments = [
-        {"km_index": i, "grade_adjusted_pace": 12.0 + i * 0.5, "is_stop": False}
-        for i in range(20)
-    ]
-    ceiling = calculate_endurance_ceiling(segments, opening_pace=12.0, threshold_pct=20.0)
-    assert ceiling > 0
-
-
-def test_goal_readiness_insufficient_data():
-    result = calculate_goal_readiness(activities=[], goal_distance_km=40.0, goal_date=datetime(2026, 8, 1))
-    assert result["status"] == "insufficient_data"
+def test_cycling_commutes_excluded_from_goal_readiness():
+    acts = [_make_ride(NOW - timedelta(days=i), 15, commute=True) for i in range(14)]
+    result = build_insights(acts)
+    cycling = result["cycling"]
+    assert cycling["goal_readiness_data"]["longest_training_km"] == 0
