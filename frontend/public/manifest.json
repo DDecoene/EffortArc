@@ -1,6 +1,6 @@
 {
-  "name": "HikeTracker",
-  "short_name": "HikeTracker",
+  "name": "EffortArc",
+  "short_name": "EffortArc",
   "description": "Hiking analytics and training readiness",
   "start_url": "/dashboard",
   "display": "standalone",
