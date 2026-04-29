@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional
 
-from database import get_db, init_db
+from database import get_db
 from models import Activity, ActivitySegment, Goal, SyncState
 from schemas import ActivityOut, ActivitySummary, GoalIn, GoalOut, SyncStatus
 from strava import (
@@ -32,10 +32,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-def startup():
-    init_db()
 
 
 @app.get("/auth/strava")

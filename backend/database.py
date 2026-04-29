@@ -4,11 +4,18 @@ import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////data/hike.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# connect_args is SQLite-only; omit for PostgreSQL
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 class Base(DeclarativeBase):
     pass
+
 
 def get_db():
     db = SessionLocal()
@@ -17,6 +24,10 @@ def get_db():
     finally:
         db.close()
 
-def init_db():
-    from models import Activity, ActivitySegment, Goal, SyncState  # noqa
-    Base.metadata.create_all(bind=engine)
+
+def get_alembic_config():
+    """Return an Alembic Config for programmatic use (e.g. tests)."""
+    from alembic.config import Config
+    cfg = Config("/app/alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+    return cfg
