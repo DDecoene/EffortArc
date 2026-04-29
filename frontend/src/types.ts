@@ -102,10 +102,10 @@ export function formatPace(minPerKm: number | null): string {
   return `${m}:${s.toString().padStart(2, '0')} /km`
 }
 
-export function formatMovingMetric(minPerKm: number | null, activityType: string): string {
-  return isCyclingType(activityType) ? formatSpeed(minPerKm) : formatPace(minPerKm)
+export function formatMovingMetric(minPerKm: number | null, _activityType: string): string {
+  return formatSpeed(minPerKm)
 }
 
-export function movingMetricLabel(activityType: string): string {
-  return isCyclingType(activityType) ? 'Avg Speed' : 'Avg Pace'
+export function movingMetricLabel(_activityType: string): string {
+  return 'Avg Speed'
 }

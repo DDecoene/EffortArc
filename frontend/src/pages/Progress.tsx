@@ -6,7 +6,7 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import type { SportType } from '../types'
-import { isCyclingType, paceToSpeed } from '../types'
+import { paceToSpeed } from '../types'
 
 const SPORT_TABS: { label: string; value: SportType | undefined }[] = [
   { label: 'All', value: undefined },
@@ -37,14 +37,10 @@ export default function Progress() {
   const paceData = [...activities]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .filter(a => a.avg_moving_pace)
-    .map(a => {
-      const cycling = isCyclingType(a.type)
-      return {
-        date: new Date(a.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-        value: cycling ? paceToSpeed(a.avg_moving_pace!) : a.avg_moving_pace,
-        type: a.type,
-      }
-    })
+    .map(a => ({
+      date: new Date(a.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
+      value: paceToSpeed(a.avg_moving_pace!),
+    }))
 
   const projectionData = (() => {
     if (weeklyVolume.length < 4) return []
@@ -56,12 +52,11 @@ export default function Progress() {
     }))
   })()
 
-  const paceTrendLabel = isCycling ? 'Speed trend (overall)' : 'Pace trend (overall)'
-  const paceTrendPositiveIsGood = isCycling
+  const paceTrendPositiveIsGood = false  // pace_trend_pct is in min/km: negative = faster = good for all sports
   const trend = insights?.pace_trend_pct
 
-  const longestLabel = isCycling ? 'Longest Ride per Month (km)' : 'Longest Walk per Month (km)'
-  const speedLabel = isCycling ? 'Avg Speed Trend (km/h)' : 'Grade-Adjusted Pace Trend'
+  const longestLabel = isCycling ? 'Longest Ride per Month (km)' : 'Longest Walk/Hike per Month (km)'
+  const speedLabel = 'Avg Speed Trend (km/h)'
   const projLabel = isCycling ? 'Projection: Longest Ride' : 'Projection: Longest Walk'
 
   return (
@@ -91,18 +86,11 @@ export default function Progress() {
       {trend != null && (
         <div className="bg-slate-800 rounded-xl p-5 flex items-center gap-4">
           <div>
-            <p className="text-sm text-slate-400">{paceTrendLabel}</p>
-            <p className={`text-2xl font-bold ${
-              (paceTrendPositiveIsGood ? trend > 0 : trend < 0) ? 'text-green-400' : 'text-red-400'
-            }`}>
+            <p className="text-sm text-slate-400">Speed trend (overall)</p>
+            <p className={`text-2xl font-bold ${trend < 0 ? 'text-green-400' : 'text-red-400'}`}>
               {trend > 0 ? '+' : ''}{trend.toFixed(1)}%
             </p>
-            <p className="text-xs text-slate-500">
-              {isCycling
-                ? (trend > 0 ? 'Getting faster' : 'Slowing down')
-                : (trend < 0 ? 'Getting faster' : 'Slowing down')
-              }
-            </p>
+            <p className="text-xs text-slate-500">{trend < 0 ? 'Getting faster' : 'Slowing down'}</p>
           </div>
         </div>
       )}
@@ -138,15 +126,11 @@ export default function Progress() {
                 tick={{ fill: '#64748b', fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
-                reversed={!isCycling}
-                tickFormatter={v => isCycling ? `${v?.toFixed(0)} km/h` : `${v?.toFixed(0)}'`}
+                tickFormatter={v => `${v?.toFixed(0)} km/h`}
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(v: number) => [
-                  isCycling ? `${v.toFixed(1)} km/h` : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, '0')} /km`,
-                  isCycling ? 'Speed' : 'Pace',
-                ]}
+                formatter={(v: number) => [`${v.toFixed(1)} km/h`, 'Speed']}
               />
               <Line type="monotone" dataKey="value" stroke={paceColor} strokeWidth={2} dot={{ fill: paceColor, r: 3 }} />
             </LineChart>

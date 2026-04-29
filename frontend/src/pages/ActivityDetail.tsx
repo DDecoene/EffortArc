@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import { api } from '../services/api'
 import type { Activity } from '../types'
-import { isCyclingType, formatPace, formatSpeed, paceToSpeed } from '../types'
+import { isCyclingType, formatSpeed, paceToSpeed } from '../types'
 import MetricCard from '../components/MetricCard'
 import FatigueIndicator from '../components/FatigueIndicator'
 import ActivityMap from '../components/ActivityMap'
@@ -49,7 +49,7 @@ export default function ActivityDetail() {
     .filter(s => !s.is_stop && s.grade_adjusted_pace)
     .map(s => ({
       km: s.km_index,
-      value: cycling ? paceToSpeed(s.grade_adjusted_pace!) : s.grade_adjusted_pace,
+      value: paceToSpeed(s.grade_adjusted_pace!),
     }))
 
   const moving = (activity.segments ?? []).filter(s => !s.is_stop && s.grade_adjusted_pace)
@@ -62,13 +62,11 @@ export default function ActivityDetail() {
     : dropPct < 15 ? 'moderate_fatigue'
     : 'strong_slowdown'
 
-  const movingMetricValue = cycling
-    ? (activity.avg_moving_pace ? formatSpeed(activity.avg_moving_pace) : '—')
-    : formatPace(activity.avg_moving_pace)
-  const movingMetricLabel = cycling ? 'Avg Speed' : 'Avg Pace'
-  const movingMetricSub = cycling ? 'grade-adjusted' : 'grade-adjusted'
+  const movingMetricValue = formatSpeed(activity.avg_moving_pace)
+  const movingMetricLabel = 'Avg Speed'
+  const movingMetricSub = 'grade-adjusted'
 
-  const segmentSpeedLabel = cycling ? 'Grade-Adj. Speed per km' : 'Grade-Adjusted Pace per km'
+  const segmentSpeedLabel = 'Grade-Adj. Speed per km'
   const tooltipStyle = { backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }
 
   return (
@@ -121,17 +119,11 @@ export default function ActivityDetail() {
                 tick={{ fill: '#64748b', fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}
-                reversed={!cycling}
-                tickFormatter={v => cycling ? `${v?.toFixed(0)} km/h` : `${v?.toFixed(0)}'`}
+                tickFormatter={v => `${v?.toFixed(0)} km/h`}
               />
               <Tooltip
                 contentStyle={tooltipStyle}
-                formatter={(v: number) => [
-                  cycling
-                    ? `${v.toFixed(1)} km/h`
-                    : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, '0')} /km`,
-                  cycling ? 'Speed' : 'Pace',
-                ]}
+                formatter={(v: number) => [`${v.toFixed(1)} km/h`, 'Speed']}
               />
               <Line type="monotone" dataKey="value" stroke={chartColor} strokeWidth={2} dot={false} />
             </LineChart>
@@ -155,8 +147,8 @@ export default function ActivityDetail() {
             <thead>
               <tr className="border-b border-slate-700">
                 <th className="px-5 py-2 text-left text-slate-400 font-normal">km</th>
-                <th className="px-5 py-2 text-right text-slate-400 font-normal">{cycling ? 'Speed' : 'Pace'}</th>
-                <th className="px-5 py-2 text-right text-slate-400 font-normal">{cycling ? 'Adj. Speed' : 'Adj. Pace'}</th>
+                <th className="px-5 py-2 text-right text-slate-400 font-normal">Speed</th>
+                <th className="px-5 py-2 text-right text-slate-400 font-normal">Adj. Speed</th>
                 <th className="px-5 py-2 text-right text-slate-400 font-normal">Ele. Δ</th>
                 <th className="px-5 py-2 text-right text-slate-400 font-normal">Stop</th>
               </tr>
@@ -165,12 +157,8 @@ export default function ActivityDetail() {
               {activity.segments.map(s => (
                 <tr key={s.km_index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                   <td className="px-5 py-2 font-mono">{s.km_index}</td>
-                  <td className="px-5 py-2 text-right font-mono">
-                    {cycling ? formatSpeed(s.pace) : formatPace(s.pace)}
-                  </td>
-                  <td className="px-5 py-2 text-right font-mono text-brand">
-                    {cycling ? formatSpeed(s.grade_adjusted_pace) : formatPace(s.grade_adjusted_pace)}
-                  </td>
+                  <td className="px-5 py-2 text-right font-mono">{formatSpeed(s.pace)}</td>
+                  <td className="px-5 py-2 text-right font-mono text-brand">{formatSpeed(s.grade_adjusted_pace)}</td>
                   <td className="px-5 py-2 text-right font-mono">{s.elevation_change_m != null ? `${Math.round(s.elevation_change_m)}m` : '—'}</td>
                   <td className="px-5 py-2 text-right">{s.is_stop ? '⏸' : ''}</td>
                 </tr>
