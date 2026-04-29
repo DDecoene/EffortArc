@@ -48,6 +48,20 @@ export default function Dashboard() {
     }
   }
 
+  async function handleBackfill() {
+    setSyncing(true)
+    setSyncResult(null)
+    try {
+      const result = await api.backfill('2025-09-01')
+      setSyncResult(`Backfilled ${result.synced} activities`)
+      window.location.reload()
+    } catch (e: any) {
+      setSyncResult(e.message)
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   async function handleConnect() {
     const { url } = await api.getAuthUrl()
     window.location.href = url
@@ -70,6 +84,13 @@ export default function Dashboard() {
             className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm transition-colors"
           >
             Connect Strava
+          </button>
+          <button
+            onClick={handleBackfill}
+            disabled={syncing}
+            className="px-4 py-2 rounded-lg bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {syncing ? 'Syncing...' : 'Backfill from Sep 2025'}
           </button>
           <button
             onClick={handleSync}

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
-import type { Insights, SportType } from '../types'
+import type { InsightsData, SportType } from '../types'
 
 export function useInsights(sportType?: SportType) {
-  const [data, setData] = useState<Insights | null>(null)
+  const [data, setData] = useState<InsightsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
