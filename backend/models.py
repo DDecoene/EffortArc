@@ -39,6 +39,7 @@ class Goal(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
+    sport_type = Column(String, nullable=False, default="hiking")
     date = Column(DateTime, nullable=False)
     distance_km = Column(Float, nullable=False)
     elevation_gain_m = Column(Float)

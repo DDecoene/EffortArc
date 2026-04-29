@@ -6,15 +6,11 @@ import {
 } from 'recharts'
 import { api } from '../services/api'
 import type { Activity } from '../types'
+import { isCyclingType, formatPace, formatSpeed, paceToSpeed } from '../types'
 import MetricCard from '../components/MetricCard'
 import FatigueIndicator from '../components/FatigueIndicator'
 import ActivityMap from '../components/ActivityMap'
 
-function formatPace(v: number | null) {
-  if (!v) return '—'
-  const m = Math.floor(v), s = Math.round((v - m) * 60)
-  return `${m}:${s.toString().padStart(2, '0')} /km`
-}
 function formatDuration(s: number | null) {
   if (!s) return '—'
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60)
@@ -40,6 +36,9 @@ export default function ActivityDetail() {
   if (loading) return <p className="text-slate-400">Loading...</p>
   if (!activity) return <p className="text-red-400">Activity not found.</p>
 
+  const cycling = isCyclingType(activity.type)
+  const chartColor = cycling ? '#f59e0b' : '#22c55e'
+
   const cleanedPoints: any[] = activity.cleaned_gpx ? JSON.parse(activity.cleaned_gpx) : []
 
   const elevationData = cleanedPoints
@@ -48,7 +47,10 @@ export default function ActivityDetail() {
 
   const paceData = (activity.segments ?? [])
     .filter(s => !s.is_stop && s.grade_adjusted_pace)
-    .map(s => ({ km: s.km_index, pace: s.grade_adjusted_pace }))
+    .map(s => ({
+      km: s.km_index,
+      value: cycling ? paceToSpeed(s.grade_adjusted_pace!) : s.grade_adjusted_pace,
+    }))
 
   const moving = (activity.segments ?? []).filter(s => !s.is_stop && s.grade_adjusted_pace)
   const quarter = Math.max(1, Math.floor(moving.length / 4))
@@ -59,6 +61,15 @@ export default function ActivityDetail() {
     : dropPct < 5 ? 'stable'
     : dropPct < 15 ? 'moderate_fatigue'
     : 'strong_slowdown'
+
+  const movingMetricValue = cycling
+    ? (activity.avg_moving_pace ? formatSpeed(activity.avg_moving_pace) : '—')
+    : formatPace(activity.avg_moving_pace)
+  const movingMetricLabel = cycling ? 'Avg Speed' : 'Avg Pace'
+  const movingMetricSub = cycling ? 'grade-adjusted' : 'grade-adjusted'
+
+  const segmentSpeedLabel = cycling ? 'Grade-Adj. Speed per km' : 'Grade-Adjusted Pace per km'
+  const tooltipStyle = { backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }
 
   return (
     <div className="space-y-6">
@@ -75,7 +86,7 @@ export default function ActivityDetail() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="Distance" value={formatDistance(activity.cleaned_distance_m)} />
         <MetricCard label="Moving Time" value={formatDuration(activity.moving_time_s)} />
-        <MetricCard label="Avg Pace" value={formatPace(activity.avg_moving_pace)} sub="grade-adjusted" />
+        <MetricCard label={movingMetricLabel} value={movingMetricValue} sub={movingMetricSub} />
         <MetricCard label="Elevation Gain" value={activity.elevation_gain_m ? `${Math.round(activity.elevation_gain_m)}m` : '—'} />
       </div>
 
@@ -92,7 +103,7 @@ export default function ActivityDetail() {
               </defs>
               <XAxis dataKey="dist" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `${v.toFixed(1)}km`} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `${v}m`} />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }} labelStyle={{ color: '#94a3b8' }} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#94a3b8' }} />
               <Area type="monotone" dataKey="ele" stroke="#6366f1" strokeWidth={2} fill="url(#eleGrad)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -101,14 +112,28 @@ export default function ActivityDetail() {
 
       {paceData.length > 0 && (
         <div className="bg-slate-800 rounded-xl p-5">
-          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-4">Grade-Adjusted Pace per km</h3>
+          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-4">{segmentSpeedLabel}</h3>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={paceData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="km" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `km ${v}`} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `${v?.toFixed(0)}'`} reversed />
-              <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }} />
-              <Line type="monotone" dataKey="pace" stroke="#22c55e" strokeWidth={2} dot={false} />
+              <YAxis
+                tick={{ fill: '#64748b', fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
+                reversed={!cycling}
+                tickFormatter={v => cycling ? `${v?.toFixed(0)} km/h` : `${v?.toFixed(0)}'`}
+              />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                formatter={(v: number) => [
+                  cycling
+                    ? `${v.toFixed(1)} km/h`
+                    : `${Math.floor(v)}:${String(Math.round((v % 1) * 60)).padStart(2, '0')} /km`,
+                  cycling ? 'Speed' : 'Pace',
+                ]}
+              />
+              <Line type="monotone" dataKey="value" stroke={chartColor} strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -130,8 +155,8 @@ export default function ActivityDetail() {
             <thead>
               <tr className="border-b border-slate-700">
                 <th className="px-5 py-2 text-left text-slate-400 font-normal">km</th>
-                <th className="px-5 py-2 text-right text-slate-400 font-normal">Pace</th>
-                <th className="px-5 py-2 text-right text-slate-400 font-normal">Adj. Pace</th>
+                <th className="px-5 py-2 text-right text-slate-400 font-normal">{cycling ? 'Speed' : 'Pace'}</th>
+                <th className="px-5 py-2 text-right text-slate-400 font-normal">{cycling ? 'Adj. Speed' : 'Adj. Pace'}</th>
                 <th className="px-5 py-2 text-right text-slate-400 font-normal">Ele. Δ</th>
                 <th className="px-5 py-2 text-right text-slate-400 font-normal">Stop</th>
               </tr>
@@ -140,8 +165,12 @@ export default function ActivityDetail() {
               {activity.segments.map(s => (
                 <tr key={s.km_index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                   <td className="px-5 py-2 font-mono">{s.km_index}</td>
-                  <td className="px-5 py-2 text-right font-mono">{formatPace(s.pace)}</td>
-                  <td className="px-5 py-2 text-right font-mono text-brand">{formatPace(s.grade_adjusted_pace)}</td>
+                  <td className="px-5 py-2 text-right font-mono">
+                    {cycling ? formatSpeed(s.pace) : formatPace(s.pace)}
+                  </td>
+                  <td className="px-5 py-2 text-right font-mono text-brand">
+                    {cycling ? formatSpeed(s.grade_adjusted_pace) : formatPace(s.grade_adjusted_pace)}
+                  </td>
                   <td className="px-5 py-2 text-right font-mono">{s.elevation_change_m != null ? `${Math.round(s.elevation_change_m)}m` : '—'}</td>
                   <td className="px-5 py-2 text-right">{s.is_stop ? '⏸' : ''}</td>
                 </tr>

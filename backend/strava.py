@@ -10,6 +10,18 @@ STRAVA_AUTH_URL = "https://www.strava.com/oauth/authorize"
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
 STRAVA_API_BASE = "https://www.strava.com/api/v3"
 
+HIKING_TYPES = {"Hike", "Walk"}
+CYCLING_TYPES = {"Ride", "VirtualRide", "EBikeRide"}
+SUPPORTED_TYPES = HIKING_TYPES | CYCLING_TYPES
+
+
+def sport_category(activity_type: str) -> str:
+    if activity_type in HIKING_TYPES:
+        return "hiking"
+    if activity_type in CYCLING_TYPES:
+        return "cycling"
+    return "other"
+
 
 def get_or_create_sync_state(db: Session) -> SyncState:
     state = db.query(SyncState).first()
@@ -82,7 +94,7 @@ async def fetch_new_activities(state: SyncState, db: Session) -> list:
         resp.raise_for_status()
         activities = resp.json()
 
-    return [a for a in activities if a.get("type") in ("Hike", "Walk")]
+    return [a for a in activities if a.get("type") in SUPPORTED_TYPES]
 
 
 async def fetch_activity_streams(activity_id: int, token: str) -> list:

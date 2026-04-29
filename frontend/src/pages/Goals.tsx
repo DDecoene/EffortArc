@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
-import type { Goal } from '../types'
+import type { Goal, SportType } from '../types'
 
 const STATUS_CONFIG = {
   ready: { color: 'text-green-400', bg: 'bg-green-900/30', icon: '✓' },
@@ -9,16 +9,36 @@ const STATUS_CONFIG = {
   insufficient_data: { color: 'text-slate-400', bg: 'bg-slate-700/30', icon: '?' },
 }
 
+const SPORT_TABS: { label: string; value: SportType | undefined }[] = [
+  { label: 'All', value: undefined },
+  { label: '🥾 Hiking', value: 'hiking' },
+  { label: '🚴 Cycling', value: 'cycling' },
+]
+
+const SPORT_ICONS: Record<SportType, string> = {
+  hiking: '🥾',
+  cycling: '🚴',
+}
+
 export default function Goals() {
+  const [sport, setSport] = useState<SportType | undefined>(undefined)
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', date: '', distance_km: '', elevation_gain_m: '', notes: '' })
+  const [form, setForm] = useState<{
+    name: string
+    sport_type: SportType
+    date: string
+    distance_km: string
+    elevation_gain_m: string
+    notes: string
+  }>({ name: '', sport_type: 'hiking', date: '', distance_km: '', elevation_gain_m: '', notes: '' })
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    api.getGoals().then(setGoals).finally(() => setLoading(false))
-  }, [])
+    setLoading(true)
+    api.getGoals(sport).then(setGoals).finally(() => setLoading(false))
+  }, [sport])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -26,19 +46,23 @@ export default function Goals() {
     try {
       await api.createGoal({
         name: form.name,
+        sport_type: form.sport_type,
         date: new Date(form.date).toISOString(),
         distance_km: Number(form.distance_km),
         elevation_gain_m: form.elevation_gain_m ? Number(form.elevation_gain_m) : undefined,
         notes: form.notes || undefined,
       })
-      const updated = await api.getGoals()
+      const updated = await api.getGoals(sport)
       setGoals(updated)
       setShowForm(false)
-      setForm({ name: '', date: '', distance_km: '', elevation_gain_m: '', notes: '' })
+      setForm({ name: '', sport_type: 'hiking', date: '', distance_km: '', elevation_gain_m: '', notes: '' })
     } finally {
       setSaving(false)
     }
   }
+
+  const distancePlaceholder = form.sport_type === 'cycling' ? 'e.g. 100' : 'e.g. 40'
+  const elevationHelp = form.sport_type === 'cycling' ? 'optional' : 'optional'
 
   return (
     <div className="space-y-6">
@@ -52,9 +76,46 @@ export default function Goals() {
         </button>
       </div>
 
+      <div className="flex gap-2">
+        {SPORT_TABS.map(tab => (
+          <button
+            key={tab.label}
+            onClick={() => setSport(tab.value)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              sport === tab.value
+                ? 'bg-brand text-slate-900'
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-slate-800 rounded-xl p-5 space-y-4">
           <h3 className="font-medium">New Goal</h3>
+
+          <div>
+            <label className="text-sm text-slate-400 block mb-2">Sport</label>
+            <div className="flex gap-2">
+              {(['hiking', 'cycling'] as SportType[]).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, sport_type: s }))}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                    form.sport_type === s
+                      ? 'bg-brand text-slate-900'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {SPORT_ICONS[s]} {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm text-slate-400 block mb-1">Event name</label>
@@ -63,7 +124,7 @@ export default function Goals() {
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 className="w-full bg-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
-                placeholder="e.g. Dodentocht 100km"
+                placeholder={form.sport_type === 'cycling' ? 'e.g. Gran Fondo 100km' : 'e.g. Dodentocht 100km'}
               />
             </div>
             <div>
@@ -84,11 +145,11 @@ export default function Goals() {
                 value={form.distance_km}
                 onChange={e => setForm(f => ({ ...f, distance_km: e.target.value }))}
                 className="w-full bg-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
-                placeholder="e.g. 40"
+                placeholder={distancePlaceholder}
               />
             </div>
             <div>
-              <label className="text-sm text-slate-400 block mb-1">Elevation gain (m, optional)</label>
+              <label className="text-sm text-slate-400 block mb-1">Elevation gain (m, {elevationHelp})</label>
               <input
                 type="number"
                 value={form.elevation_gain_m}
@@ -121,7 +182,10 @@ export default function Goals() {
               <div key={goal.id} className="bg-slate-800 rounded-xl p-5 space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold text-lg">{goal.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <span>{SPORT_ICONS[goal.sport_type]}</span>
+                      <h3 className="font-semibold text-lg">{goal.name}</h3>
+                    </div>
                     <p className="text-slate-400 text-sm">
                       {goal.distance_km}km · {new Date(goal.date).toLocaleDateString()}
                     </p>

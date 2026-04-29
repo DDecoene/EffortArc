@@ -48,6 +48,7 @@ class ActivitySummary(BaseModel):
 
 class GoalIn(BaseModel):
     name: str
+    sport_type: str = "hiking"
     date: datetime
     distance_km: float
     elevation_gain_m: Optional[float] = None
@@ -57,6 +58,7 @@ class GoalIn(BaseModel):
 class GoalOut(BaseModel):
     id: int
     name: str
+    sport_type: str
     date: datetime
     distance_km: float
     elevation_gain_m: Optional[float]
