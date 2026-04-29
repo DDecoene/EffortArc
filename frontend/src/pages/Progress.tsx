@@ -135,6 +135,12 @@ export default function Progress() {
                 {cyclingInsights.goal_readiness_data.commute_weekly_km != null && (
                   <div>Commute avg: <span className="text-slate-200">{cyclingInsights.goal_readiness_data.commute_weekly_km.toFixed(1)}km/week</span></div>
                 )}
+                {(cyclingInsights.goal_readiness_data.commute_credit_km ?? 0) > 0 && (
+                  <div>Commute fitness credit: <span className="text-slate-200">+{cyclingInsights.goal_readiness_data.commute_credit_km!.toFixed(1)}km</span></div>
+                )}
+                {cyclingInsights.goal_readiness_data.effective_km != null && (
+                  <div>Effective readiness: <span className="text-amber-400 font-medium">{cyclingInsights.goal_readiness_data.effective_km.toFixed(1)}km</span></div>
+                )}
               </div>
             </div>
           )}

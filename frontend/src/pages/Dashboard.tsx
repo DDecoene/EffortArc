@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { api } from '../services/api'
@@ -33,6 +33,11 @@ export default function Dashboard() {
   const { data: activities, loading: activitiesLoading } = useActivities(sport)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<string | null>(null)
+  const [isConnected, setIsConnected] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    api.getAuthStatus().then(s => setIsConnected(s.is_connected)).catch(() => setIsConnected(false))
+  }, [])
 
   async function handleSync() {
     setSyncing(true)
@@ -69,6 +74,11 @@ export default function Dashboard() {
 
   const recentActivities = activities.slice(0, 5)
   const weeklyData = insights?.weekly_volume?.slice(-12) ?? []
+  const fitnessStatus = sport === 'hiking'
+    ? insights?.hiking?.fitness_status
+    : sport === 'cycling'
+      ? insights?.cycling?.fitness_status
+      : insights?.fitness_status
 
   const chartColor = sport === 'cycling' ? '#f59e0b' : '#22c55e'
   const gradientId = sport === 'cycling' ? 'volumeGradCycling' : 'volumeGradHiking'
@@ -79,12 +89,14 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold">Dashboard</h2>
         <div className="flex items-center gap-3">
           {syncResult && <span className="text-sm text-slate-400">{syncResult}</span>}
-          <button
-            onClick={handleConnect}
-            className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm transition-colors"
-          >
-            Connect Strava
-          </button>
+          {isConnected === false && (
+            <button
+              onClick={handleConnect}
+              className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-sm transition-colors"
+            >
+              Connect Strava
+            </button>
+          )}
           <button
             onClick={handleBackfill}
             disabled={syncing}
@@ -120,10 +132,10 @@ export default function Dashboard() {
 
       {insights && (
         <div className="flex items-center gap-4">
-          <FitnessStatusBadge status={insights.fitness_status.label} />
-          {insights.fitness_status.recent_weekly_km && (
+          <FitnessStatusBadge status={fitnessStatus?.label ?? 'insufficient_data'} />
+          {fitnessStatus?.recent_weekly_km && (
             <span className="text-slate-400 text-sm">
-              {insights.fitness_status.recent_weekly_km.toFixed(1)} km/week avg
+              {fitnessStatus.recent_weekly_km.toFixed(1)} km/week avg ({sport ?? 'all activities'})
             </span>
           )}
           <span className="text-slate-500 text-sm">

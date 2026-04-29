@@ -82,9 +82,13 @@ def _cycling_goal_readiness_data(cycling_training: List[Dict], cycling_commute: 
         a["cleaned_distance_m"] / 1000 for a in cycling_commute
         if a["date"] >= now - timedelta(weeks=4)
     ) / 4
+    # commutes build base fitness but aren't race-specific — credit at 25%
+    commute_credit_km = commute_weekly_km * 0.25
     return {
         "longest_training_km": longest_training_km,
         "commute_weekly_km": round(commute_weekly_km, 1),
+        "commute_credit_km": round(commute_credit_km, 1),
+        "effective_km": round(longest_training_km + commute_credit_km, 1),
     }
 
 

@@ -124,6 +124,7 @@ export interface SportInsights {
     effective_km?: number
     longest_training_km?: number
     commute_weekly_km?: number
+    commute_credit_km?: number
   }
 }
 
