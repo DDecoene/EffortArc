@@ -1,0 +1,19 @@
+{
+  "name": "EffortArc",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "secrets": {
+    "STRAVA_CLIENT_ID": {},
+    "STRAVA_CLIENT_SECRET": {}
+  },
+  "postCreateCommand": "printf 'STRAVA_CLIENT_ID=%s\\nSTRAVA_CLIENT_SECRET=%s\\n' \"$STRAVA_CLIENT_ID\" \"$STRAVA_CLIENT_SECRET\" > .env && docker compose up --build -d",
+  "forwardPorts": [5173, 8000],
+  "portsAttributes": {
+    "5173": { "label": "Frontend", "onAutoForward": "openBrowser" },
+    "8000": { "label": "Backend API" }
+  },
+  "remoteUser": "vscode"
+}
