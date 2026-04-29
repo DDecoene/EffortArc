@@ -52,3 +52,9 @@ async def test_fetch_activities_filters_hike_walk():
         result = await fetch_new_activities(mock_state, mock_db)
         assert len(result) == 2
         assert all(a["type"] in ("Hike", "Walk") for a in result)
+
+
+def test_sport_category_cycling():
+    from strava import sport_category
+    assert sport_category("Ride") == "cycling"
+    assert sport_category("EBikeRide") == "cycling"

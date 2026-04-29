@@ -80,6 +80,7 @@ async def sync_activities(db: Session = Depends(get_db)):
             name=act_data["name"],
             date=datetime.fromisoformat(act_data["start_date"].replace("Z", "+00:00")).replace(tzinfo=None),
             type=act_data["type"],
+            commute=bool(act_data.get("commute", False)),
             raw_distance_m=act_data.get("distance"),
             raw_duration_s=act_data.get("elapsed_time"),
             raw_gpx=json.dumps(raw_points),
