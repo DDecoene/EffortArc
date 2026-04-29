@@ -110,6 +110,66 @@ async def sync_activities(db: Session = Depends(get_db)):
     return {"synced": synced, "total_new": len(new_activities)}
 
 
+@app.post("/sync/backfill")
+async def backfill_activities(
+    since: str = Query("2025-09-01", description="ISO date to backfill from"),
+    db: Session = Depends(get_db),
+):
+    from strava import fetch_all_activities_since
+    state = get_or_create_sync_state(db)
+    if not state.strava_access_token:
+        raise HTTPException(status_code=401, detail="Not connected to Strava")
+
+    since_dt = datetime.fromisoformat(since)
+
+    # Strava is source of truth — wipe activities, preserve goals
+    db.query(ActivitySegment).delete()
+    db.query(Activity).delete()
+    db.commit()
+
+    all_activities = await fetch_all_activities_since(state, db, since_dt)
+    synced = 0
+
+    for act_data in all_activities:
+        raw_points = await fetch_activity_streams(act_data["id"], state.strava_access_token)
+        sport = sport_category(act_data["type"])
+        cleaned = clean_activity(raw_points, sport=sport)
+
+        activity = Activity(
+            strava_id=str(act_data["id"]),
+            name=act_data["name"],
+            date=datetime.fromisoformat(act_data["start_date"].replace("Z", "+00:00")).replace(tzinfo=None),
+            type=act_data["type"],
+            commute=bool(act_data.get("commute", False)),
+            raw_distance_m=act_data.get("distance"),
+            raw_duration_s=act_data.get("elapsed_time"),
+            raw_gpx=json.dumps(raw_points),
+            cleaned_gpx=json.dumps(cleaned["cleaned_points"]),
+            cleaned_distance_m=cleaned["cleaned_distance_m"],
+            moving_time_s=act_data.get("moving_time") or cleaned["moving_time_s"],
+            elevation_gain_m=cleaned["elevation_gain_m"],
+            avg_moving_pace=cleaned["avg_moving_pace"],
+            processed_at=datetime.utcnow(),
+        )
+        db.add(activity)
+        db.flush()
+
+        for seg in cleaned["segments"]:
+            db.add(ActivitySegment(
+                activity_id=activity.id,
+                km_index=seg["km_index"],
+                pace=seg["pace"],
+                elevation_change_m=seg["elevation_change_m"],
+                grade_adjusted_pace=seg["grade_adjusted_pace"],
+                is_stop=seg["is_stop"],
+            ))
+        synced += 1
+
+    state.last_synced_at = datetime.utcnow()
+    db.commit()
+    return {"synced": synced, "since": since}
+
+
 def _sport_type_filter(query, sport_type: Optional[str]):
     if sport_type == "hiking":
         return query.filter(Activity.type.in_(list(HIKING_TYPES)))

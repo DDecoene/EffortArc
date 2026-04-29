@@ -97,6 +97,29 @@ async def fetch_new_activities(state: SyncState, db: Session) -> list:
     return [a for a in activities if a.get("type") in SUPPORTED_TYPES]
 
 
+async def fetch_all_activities_since(state: SyncState, db: Session, since: datetime) -> list:
+    await refresh_token_if_needed(state, db)
+    all_activities = []
+    page = 1
+    after_ts = int(since.timestamp())
+
+    async with httpx.AsyncClient() as client:
+        while True:
+            resp = await client.get(
+                f"{STRAVA_API_BASE}/athlete/activities",
+                headers={"Authorization": f"Bearer {state.strava_access_token}"},
+                params={"per_page": 100, "page": page, "after": after_ts},
+            )
+            resp.raise_for_status()
+            batch = resp.json()
+            if not batch:
+                break
+            all_activities.extend(batch)
+            page += 1
+
+    return [a for a in all_activities if a.get("type") in SUPPORTED_TYPES]
+
+
 async def fetch_activity_streams(activity_id: int, token: str) -> list:
     async with httpx.AsyncClient() as client:
         resp = await client.get(
