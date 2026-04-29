@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -21,6 +21,8 @@ from strava import (
 )
 from cleaner import clean_activity
 from metrics import build_insights, calculate_goal_readiness
+
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
 
 app = FastAPI(title="HikeTracker API")
 
@@ -113,8 +115,11 @@ async def sync_activities(db: Session = Depends(get_db)):
 @app.post("/sync/backfill")
 async def backfill_activities(
     since: str = Query("2025-09-01", description="ISO date to backfill from"),
+    x_admin_token: str = Header(default=""),
     db: Session = Depends(get_db),
 ):
+    if ADMIN_SECRET and x_admin_token != ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
     from strava import fetch_all_activities_since
     state = get_or_create_sync_state(db)
     if not state.strava_access_token:
@@ -129,45 +134,50 @@ async def backfill_activities(
 
     all_activities = await fetch_all_activities_since(state, db, since_dt)
     synced = 0
+    failed = 0
 
     for act_data in all_activities:
-        raw_points = await fetch_activity_streams(act_data["id"], state.strava_access_token)
-        sport = sport_category(act_data["type"])
-        cleaned = clean_activity(raw_points, sport=sport)
+        try:
+            raw_points = await fetch_activity_streams(act_data["id"], state.strava_access_token)
+            sport = sport_category(act_data["type"])
+            cleaned = clean_activity(raw_points, sport=sport)
 
-        activity = Activity(
-            strava_id=str(act_data["id"]),
-            name=act_data["name"],
-            date=datetime.fromisoformat(act_data["start_date"].replace("Z", "+00:00")).replace(tzinfo=None),
-            type=act_data["type"],
-            commute=bool(act_data.get("commute", False)),
-            raw_distance_m=act_data.get("distance"),
-            raw_duration_s=act_data.get("elapsed_time"),
-            raw_gpx=json.dumps(raw_points),
-            cleaned_gpx=json.dumps(cleaned["cleaned_points"]),
-            cleaned_distance_m=cleaned["cleaned_distance_m"],
-            moving_time_s=act_data.get("moving_time") or cleaned["moving_time_s"],
-            elevation_gain_m=cleaned["elevation_gain_m"],
-            avg_moving_pace=cleaned["avg_moving_pace"],
-            processed_at=datetime.utcnow(),
-        )
-        db.add(activity)
-        db.flush()
+            activity = Activity(
+                strava_id=str(act_data["id"]),
+                name=act_data["name"],
+                date=datetime.fromisoformat(act_data["start_date"].replace("Z", "+00:00")).replace(tzinfo=None),
+                type=act_data["type"],
+                commute=bool(act_data.get("commute", False)),
+                raw_distance_m=act_data.get("distance"),
+                raw_duration_s=act_data.get("elapsed_time"),
+                raw_gpx=json.dumps(raw_points),
+                cleaned_gpx=json.dumps(cleaned["cleaned_points"]),
+                cleaned_distance_m=cleaned["cleaned_distance_m"],
+                moving_time_s=act_data.get("moving_time") or cleaned["moving_time_s"],
+                elevation_gain_m=cleaned["elevation_gain_m"],
+                avg_moving_pace=cleaned["avg_moving_pace"],
+                processed_at=datetime.utcnow(),
+            )
+            db.add(activity)
+            db.flush()
 
-        for seg in cleaned["segments"]:
-            db.add(ActivitySegment(
-                activity_id=activity.id,
-                km_index=seg["km_index"],
-                pace=seg["pace"],
-                elevation_change_m=seg["elevation_change_m"],
-                grade_adjusted_pace=seg["grade_adjusted_pace"],
-                is_stop=seg["is_stop"],
-            ))
-        synced += 1
+            for seg in cleaned["segments"]:
+                db.add(ActivitySegment(
+                    activity_id=activity.id,
+                    km_index=seg["km_index"],
+                    pace=seg["pace"],
+                    elevation_change_m=seg["elevation_change_m"],
+                    grade_adjusted_pace=seg["grade_adjusted_pace"],
+                    is_stop=seg["is_stop"],
+                ))
+            synced += 1
+        except Exception:
+            failed += 1
+            continue
 
     state.last_synced_at = datetime.utcnow()
     db.commit()
-    return {"synced": synced, "since": since}
+    return {"synced": synced, "failed": failed, "since": since}
 
 
 def _sport_type_filter(query, sport_type: Optional[str]):

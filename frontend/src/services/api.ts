@@ -12,7 +12,13 @@ export const api = {
   getAuthUrl: () => request<{ url: string }>('/auth/strava'),
   getAuthStatus: () => request<SyncStatus>('/auth/status'),
   sync: () => request<{ synced: number; total_new: number }>('/sync', { method: 'POST' }),
-  backfill: (since: string) => request<{ synced: number; since: string }>(`/sync/backfill?since=${since}`, { method: 'POST' }),
+  backfill: (since: string) => {
+    const adminToken = import.meta.env.VITE_ADMIN_SECRET ?? ''
+    return request<{ synced: number; failed: number; since: string }>(`/sync/backfill?since=${since}`, {
+      method: 'POST',
+      headers: adminToken ? { 'X-Admin-Token': adminToken } : {},
+    })
+  },
 
   getActivities: (sportType?: SportType) => {
     const qs = sportType ? `?sport_type=${sportType}` : ''

@@ -41,3 +41,12 @@ def test_cycling_commutes_excluded_from_goal_readiness():
     result = build_insights(acts)
     cycling = result["cycling"]
     assert cycling["goal_readiness_data"]["longest_training_km"] == 0
+
+def test_goal_readiness_insufficient_data():
+    from metrics import calculate_goal_readiness
+    result = calculate_goal_readiness(
+        [_make_hike(NOW - timedelta(days=i*7), 10) for i in range(3)],
+        goal_distance_km=42,
+        goal_date=NOW + timedelta(days=60),
+    )
+    assert result["status"] == "insufficient_data"
