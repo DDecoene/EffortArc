@@ -24,7 +24,7 @@ from metrics import build_insights, calculate_goal_readiness
 
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
 
-app = FastAPI(title="HikeTracker API")
+app = FastAPI(title="EffortArc API")
 
 app.add_middleware(
     CORSMiddleware,
