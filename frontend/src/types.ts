@@ -109,3 +109,30 @@ export function formatMovingMetric(minPerKm: number | null, _activityType: strin
 export function movingMetricLabel(_activityType: string): string {
   return 'Avg Speed'
 }
+
+export interface SportInsights {
+  fitness_status: {
+    label: 'building' | 'maintaining' | 'declining' | 'insufficient_data'
+    recent_weekly_km: number | null
+    trend_pct: number | null
+  }
+  weekly_volume: { week: string; longest_km: number }[]
+  pace_trend_pct: number | null
+  goal_readiness_data: {
+    longest_recent_km?: number
+    cardio_credit_km?: number
+    effective_km?: number
+    longest_training_km?: number
+    commute_weekly_km?: number
+  }
+}
+
+export interface InsightsData {
+  hiking: SportInsights
+  cycling: SportInsights
+  recommendation: string
+  total_activities: number
+  fitness_status: { label: string; recent_weekly_km: number | null; trend_pct: number | null }
+  weekly_volume: { week: string; longest_km: number }[]
+  pace_trend_pct: number | null
+}

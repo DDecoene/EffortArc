@@ -14,25 +14,30 @@ const SPORT_TABS: { label: string; value: SportType | undefined }[] = [
   { label: '🚴 Cycling', value: 'cycling' },
 ]
 
+const FITNESS_LABEL: Record<string, string> = {
+  building: 'Building',
+  maintaining: 'Maintaining',
+  declining: 'Declining',
+  insufficient_data: 'Not enough data',
+}
+
+const FITNESS_COLOR: Record<string, string> = {
+  building: 'text-green-400',
+  maintaining: 'text-blue-400',
+  declining: 'text-red-400',
+  insufficient_data: 'text-slate-400',
+}
+
 export default function Progress() {
   const [sport, setSport] = useState<SportType | undefined>(undefined)
-  const { data: insights, loading } = useInsights(sport)
+  const { data: insights, loading } = useInsights(undefined)
   const { data: activities } = useActivities(sport)
 
-  const isCycling = sport === 'cycling'
-  const chartColor = isCycling ? '#f59e0b' : '#22c55e'
-  const paceColor = isCycling ? '#f59e0b' : '#6366f1'
   const tooltipStyle = { backgroundColor: '#1e293b', border: 'none', borderRadius: '8px' }
 
-  const weeklyVolume = insights?.weekly_volume ?? []
-
-  const longestByMonth = activities.reduce((acc, a) => {
-    const key = new Date(a.date).toLocaleDateString('en', { year: '2-digit', month: 'short' })
-    const km = (a.cleaned_distance_m ?? 0) / 1000
-    if (!acc[key] || acc[key] < km) acc[key] = km
-    return acc
-  }, {} as Record<string, number>)
-  const longestData = Object.entries(longestByMonth).map(([month, km]) => ({ month, km }))
+  const hikingInsights = insights?.hiking
+  const cyclingInsights = insights?.cycling
+  const recommendation = insights?.recommendation
 
   const paceData = [...activities]
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -42,22 +47,13 @@ export default function Progress() {
       value: paceToSpeed(a.avg_moving_pace!),
     }))
 
-  const projectionData = (() => {
-    if (weeklyVolume.length < 4) return []
-    const last = weeklyVolume[weeklyVolume.length - 1]
-    const growth = (weeklyVolume[weeklyVolume.length - 1].longest_km - weeklyVolume[0].longest_km) / weeklyVolume.length
-    return Array.from({ length: 8 }, (_, i) => ({
-      week: `+${i + 1}w`,
-      projected: Math.max(0, last.longest_km + (i + 1) * growth),
-    }))
-  })()
+  const activeWeeklyVolume = sport === 'cycling'
+    ? cyclingInsights?.weekly_volume ?? []
+    : sport === 'hiking'
+    ? hikingInsights?.weekly_volume ?? []
+    : insights?.weekly_volume ?? []
 
-  const paceTrendPositiveIsGood = false  // pace_trend_pct is in min/km: negative = faster = good for all sports
-  const trend = insights?.pace_trend_pct
-
-  const longestLabel = isCycling ? 'Longest Ride per Month (km)' : 'Longest Walk/Hike per Month (km)'
-  const speedLabel = 'Avg Speed Trend (km/h)'
-  const projLabel = isCycling ? 'Projection: Longest Ride' : 'Projection: Longest Walk'
+  const chartColor = sport === 'cycling' ? '#f59e0b' : '#22c55e'
 
   return (
     <div className="space-y-6">
@@ -83,72 +79,99 @@ export default function Progress() {
 
       {loading && <p className="text-slate-400">Loading...</p>}
 
-      {trend != null && (
-        <div className="bg-slate-800 rounded-xl p-5 flex items-center gap-4">
-          <div>
-            <p className="text-sm text-slate-400">Speed trend (overall)</p>
-            <p className={`text-2xl font-bold ${trend < 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {trend > 0 ? '+' : ''}{trend.toFixed(1)}%
-            </p>
-            <p className="text-xs text-slate-500">{trend < 0 ? 'Getting faster' : 'Slowing down'}</p>
-          </div>
+      {recommendation && (
+        <div className="bg-amber-900/30 border border-amber-700/40 rounded-xl p-5">
+          <p className="text-xs text-amber-400 uppercase tracking-wider font-medium mb-2">This week's focus</p>
+          <p className="text-slate-100 text-sm leading-relaxed">{recommendation}</p>
         </div>
       )}
 
-      {longestData.length > 0 && (
+      {(hikingInsights || cyclingInsights) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {hikingInsights && (
+            <div className="bg-slate-800 rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">🥾 Hiking</span>
+                <span className={`text-sm font-semibold ${FITNESS_COLOR[hikingInsights.fitness_status.label]}`}>
+                  {FITNESS_LABEL[hikingInsights.fitness_status.label]}
+                </span>
+              </div>
+              {hikingInsights.fitness_status.recent_weekly_km != null && (
+                <p className="text-2xl font-bold">
+                  {hikingInsights.fitness_status.recent_weekly_km.toFixed(1)}
+                  <span className="text-sm text-slate-400 font-normal ml-1">km/week</span>
+                </p>
+              )}
+              <div className="text-xs text-slate-400 space-y-1">
+                {hikingInsights.goal_readiness_data.longest_recent_km != null && (
+                  <div>Longest recent: <span className="text-slate-200">{hikingInsights.goal_readiness_data.longest_recent_km.toFixed(1)}km</span></div>
+                )}
+                {(hikingInsights.goal_readiness_data.cardio_credit_km ?? 0) > 0 && (
+                  <div>Cycling cardio credit: <span className="text-slate-200">+{hikingInsights.goal_readiness_data.cardio_credit_km!.toFixed(1)}km</span></div>
+                )}
+                {hikingInsights.goal_readiness_data.effective_km != null && (
+                  <div>Effective readiness: <span className="text-green-400 font-medium">{hikingInsights.goal_readiness_data.effective_km.toFixed(1)}km</span></div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {cyclingInsights && (
+            <div className="bg-slate-800 rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">🚴 Cycling</span>
+                <span className={`text-sm font-semibold ${FITNESS_COLOR[cyclingInsights.fitness_status.label]}`}>
+                  {FITNESS_LABEL[cyclingInsights.fitness_status.label]}
+                </span>
+              </div>
+              {cyclingInsights.fitness_status.recent_weekly_km != null && (
+                <p className="text-2xl font-bold">
+                  {cyclingInsights.fitness_status.recent_weekly_km.toFixed(1)}
+                  <span className="text-sm text-slate-400 font-normal ml-1">km/week</span>
+                </p>
+              )}
+              <div className="text-xs text-slate-400 space-y-1">
+                <div>Longest training ride: <span className="text-slate-200">{(cyclingInsights.goal_readiness_data.longest_training_km ?? 0).toFixed(1)}km</span></div>
+                {cyclingInsights.goal_readiness_data.commute_weekly_km != null && (
+                  <div>Commute avg: <span className="text-slate-200">{cyclingInsights.goal_readiness_data.commute_weekly_km.toFixed(1)}km/week</span></div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeWeeklyVolume.length > 0 && (
         <div className="bg-slate-800 rounded-xl p-5">
-          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-4">{longestLabel}</h3>
+          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-4">Longest session per week (km)</h3>
           <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={longestData}>
+            <AreaChart data={activeWeeklyVolume}>
               <defs>
-                <linearGradient id="longGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={chartColor} stopOpacity={0.3} />
                   <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="month" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+              <XAxis dataKey="week" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip contentStyle={tooltipStyle} />
-              <Area type="monotone" dataKey="km" stroke={chartColor} strokeWidth={2} fill="url(#longGrad)" />
+              <Area type="monotone" dataKey="longest_km" stroke={chartColor} strokeWidth={2} fill="url(#volGrad)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {paceData.length > 0 && (
+      {paceData.length > 0 && sport !== 'cycling' && (
         <div className="bg-slate-800 rounded-xl p-5">
-          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-4">{speedLabel}</h3>
+          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-4">Avg speed trend (km/h)</h3>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={paceData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis
-                tick={{ fill: '#64748b', fontSize: 11 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={v => `${v?.toFixed(0)} km/h`}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v: number) => [`${v.toFixed(1)} km/h`, 'Speed']}
-              />
-              <Line type="monotone" dataKey="value" stroke={paceColor} strokeWidth={2} dot={{ fill: paceColor, r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {projectionData.length > 0 && (
-        <div className="bg-slate-800 rounded-xl p-5">
-          <h3 className="text-sm text-slate-400 uppercase tracking-wider mb-1">{projLabel}</h3>
-          <p className="text-xs text-slate-500 mb-4">If you keep this up...</p>
-          <ResponsiveContainer width="100%" height={140}>
-            <LineChart data={projectionData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="week" tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Line type="monotone" dataKey="projected" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false}
+                tickFormatter={v => `${v?.toFixed(0)}`} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [`${v.toFixed(1)} km/h`, 'Speed']} />
+              <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} dot={{ fill: '#6366f1', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
