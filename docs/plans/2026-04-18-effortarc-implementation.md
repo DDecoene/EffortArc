@@ -1,4 +1,4 @@
-# HikeTracker Implementation Plan
+# EffortArc Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -1102,7 +1102,7 @@ from strava import (
 from cleaner import clean_activity
 from metrics import build_insights, calculate_goal_readiness
 
-app = FastAPI(title="HikeTracker API")
+app = FastAPI(title="EffortArc API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -1292,7 +1292,7 @@ git commit -m "feat: FastAPI routes for auth, sync, activities, goals, insights"
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="/manifest.json" />
-    <title>HikeTracker</title>
+    <title>EffortArc</title>
   </head>
   <body class="bg-slate-900 text-slate-100">
     <div id="root"></div>
@@ -1613,7 +1613,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-56 shrink-0 bg-slate-950 border-r border-slate-800 flex flex-col p-4 gap-1">
         <div className="px-4 py-3 mb-4">
-          <h1 className="text-lg font-bold text-brand">⛰ HikeTracker</h1>
+          <h1 className="text-lg font-bold text-brand">⛰ EffortArc</h1>
         </div>
         <NavLink to="/dashboard" label="Dashboard" icon="📊" />
         <NavLink to="/progress" label="Progress" icon="📈" />
@@ -2558,8 +2558,8 @@ git commit -m "feat: progress page with pace trend, longest walk, projection cha
 
 ```json
 {
-  "name": "HikeTracker",
-  "short_name": "HikeTracker",
+  "name": "EffortArc",
+  "short_name": "EffortArc",
   "description": "Hiking analytics and training readiness",
   "start_url": "/dashboard",
   "display": "standalone",
@@ -2646,7 +2646,7 @@ git commit -m "feat: PWA manifest and service worker for offline support"
 **Step 1: Create README.md**
 
 ```markdown
-# HikeTracker
+# EffortArc
 
 Hiking analytics app. Syncs from Strava, cleans GPS data, and shows fitness trajectory + goal readiness.
 
@@ -2656,7 +2656,7 @@ Hiking analytics app. Syncs from Strava, cleans GPS data, and shows fitness traj
 
 1. Go to https://www.strava.com/settings/api
 2. Create an application:
-   - App name: HikeTracker (local)
+   - App name: EffortArc (local)
    - Category: Other
    - Authorization Callback Domain: `localhost`
 3. Copy your **Client ID** and **Client Secret**

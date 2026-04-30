@@ -1,8 +1,8 @@
-# Discovery Plan: HikeTracker Feature Prioritization
+# Discovery Plan: EffortArc Feature Prioritization
 
 **Date**: 2026-04-19
 **Product Stage**: Existing product, 0 external users (self-built)
-**Discovery Question**: What features make HikeTracker genuinely useful for people training toward hiking events — and is there broader market demand?
+**Discovery Question**: What features make EffortArc genuinely useful for people training toward hiking events — and is there broader market demand?
 
 ---
 
@@ -64,7 +64,7 @@
 
 ### Experiment 2: Concierge MVP (tests assumption A)
 **Hypothesis**: People in hiking event groups want a weekly training target based on their data, and will return for follow-up.
-**Setup**: Post in Dodentocht / hiking event Facebook groups: *"Building a tool that tells you if you're on track for your event and gives you a weekly training target. Drop your goal event and I'll manually tell you what your week should look like."* Respond manually using HikeTracker's readiness logic.
+**Setup**: Post in Dodentocht / hiking event Facebook groups: *"Building a tool that tells you if you're on track for your event and gives you a weekly training target. Drop your goal event and I'll manually tell you what your week should look like."* Respond manually using EffortArc's readiness logic.
 **Measurement**: Response count, return rate (did they come back week 2?).
 **Decision**: <10 responses → wrong audience or message. Responses but no returns → plan format isn't compelling.
 

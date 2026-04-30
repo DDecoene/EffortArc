@@ -1,4 +1,4 @@
-# HikeTracker
+# EffortArc
 
 Hiking analytics app. Syncs from Strava, cleans GPS data, and shows fitness trajectory + goal readiness.
 
@@ -8,7 +8,7 @@ Hiking analytics app. Syncs from Strava, cleans GPS data, and shows fitness traj
 
 1. Go to https://www.strava.com/settings/api
 2. Create an application:
-   - App name: HikeTracker (local)
+   - App name: EffortArc (local)
    - Category: Other
    - Authorization Callback Domain: `localhost`
 3. Copy your **Client ID** and **Client Secret**

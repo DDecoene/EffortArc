@@ -11,6 +11,7 @@ services:
       - STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID}
       - STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET}
       - FRONTEND_URL=http://localhost:5173
+      - BACKEND_URL=http://localhost:5173
     env_file:
       - .env
 
@@ -22,6 +23,6 @@ services:
       - ./frontend:/app
       - /app/node_modules
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=/api
     depends_on:
       - backend

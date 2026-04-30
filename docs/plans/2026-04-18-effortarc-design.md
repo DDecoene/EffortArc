@@ -1,4 +1,4 @@
-# HikeTracker — Design Document
+# EffortArc — Design Document
 **Date:** 2026-04-18
 
 ## Problem

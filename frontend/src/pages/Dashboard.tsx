@@ -68,8 +68,12 @@ export default function Dashboard() {
   }
 
   async function handleConnect() {
-    const { url } = await api.getAuthUrl()
-    window.location.href = url
+    try {
+      const { url } = await api.getAuthUrl()
+      window.location.href = url
+    } catch (e: any) {
+      setSyncResult(`Failed to connect: ${e.message}`)
+    }
   }
 
   const recentActivities = activities.slice(0, 5)

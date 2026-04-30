@@ -864,19 +864,19 @@ git commit -m "feat: reimagine Progress page with 3-tier layout"
 **Step 1: Create one GitHub issue per task**
 
 ```bash
-gh issue create --repo DDecoene/HikeTracker --title "Add commute column via Alembic migration" \
+gh issue create --repo DDecoene/EffortArc --title "Add commute column via Alembic migration" \
   --body "Add commute BOOLEAN to activities table. See design doc." --milestone "v0.2.0-insights-reimagined"
 
-gh issue create --repo DDecoene/HikeTracker --title "Store commute flag during Strava sync" \
+gh issue create --repo DDecoene/EffortArc --title "Store commute flag during Strava sync" \
   --body "Map Strava commute field to Activity.commute on every sync." --milestone "v0.2.0-insights-reimagined"
 
-gh issue create --repo DDecoene/HikeTracker --title "Add backfill endpoint POST /sync/backfill" \
+gh issue create --repo DDecoene/EffortArc --title "Add backfill endpoint POST /sync/backfill" \
   --body "Paginated fetch from Strava since a given date. Wipes and repopulates activities. Goals preserved." --milestone "v0.2.0-insights-reimagined"
 
-gh issue create --repo DDecoene/HikeTracker --title "Rewrite insights engine (per-sport, commute-aware)" \
+gh issue create --repo DDecoene/EffortArc --title "Rewrite insights engine (per-sport, commute-aware)" \
   --body "Classify activities by sport+commute. Per-sport fitness status. Cross-sport cardio credit for hiking. Unified recommendation string." --milestone "v0.2.0-insights-reimagined"
 
-gh issue create --repo DDecoene/HikeTracker --title "Reimagine Progress page with 3-tier layout" \
+gh issue create --repo DDecoene/EffortArc --title "Reimagine Progress page with 3-tier layout" \
   --body "Tier 1: urgent CTA. Tier 2: per-sport status cards. Tier 3: charts." --milestone "v0.2.0-insights-reimagined"
 ```
 

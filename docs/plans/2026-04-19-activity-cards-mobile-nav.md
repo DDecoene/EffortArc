@@ -195,7 +195,7 @@ export default function Layout() {
   const nav = (
     <>
       <div className="px-4 py-3 mb-4">
-        <h1 className="text-lg font-bold text-brand">⛰ HikeTracker</h1>
+        <h1 className="text-lg font-bold text-brand">⛰ EffortArc</h1>
       </div>
       <NavLink to="/dashboard" label="Dashboard" icon="📊" onClick={() => setSidebarOpen(false)} />
       <NavLink to="/progress" label="Progress" icon="📈" onClick={() => setSidebarOpen(false)} />
@@ -239,7 +239,7 @@ export default function Layout() {
             <span className="block w-5 h-0.5 bg-slate-300 mb-1" />
             <span className="block w-5 h-0.5 bg-slate-300" />
           </button>
-          <h1 className="text-lg font-bold text-brand md:hidden">⛰ HikeTracker</h1>
+          <h1 className="text-lg font-bold text-brand md:hidden">⛰ EffortArc</h1>
         </div>
         <Outlet />
       </main>
